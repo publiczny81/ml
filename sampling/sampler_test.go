@@ -1,6 +1,7 @@
 package sampling
 
 import (
+	"context"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -15,95 +16,44 @@ func TestSampler(t *testing.T) {
 }
 
 func (s *SamplerSuite) TestNew() {
-	var sampler = New[float64](new(sourceMock), func() Strategy[float64] {
-		return new(strategyMock)
-	})
+	var sampler = New[float64](new(sourceMock), new(strategyMock))
 	s.NotNil(sampler)
-	s.NotNil(sampler.newStrategy)
 	s.NotNil(sampler.source)
 }
 
-func (s *SamplerSuite) TestReset() {
+func (s *SamplerSuite) TestSamples() {
 	var (
-		strategy = func() (m *strategyMock) {
-			m = new(strategyMock)
-			m.On("Next", mock.AnythingOfType("*sampling.sourceMock")).Once().Return(float64(1), true)
-			m.On("Next", mock.AnythingOfType("*sampling.sourceMock")).Once().Return(float64(-1), false)
-			return
-		}()
-		actual = New[float64](new(sourceMock), func() Strategy[float64] {
-			return strategy
-		})
+		ctx      = context.TODO()
+		source   = new(sourceMock)
+		strategy = new(strategyMock)
+		sampler  = New[float64](source, strategy)
+		ch       = make(chan Sample[float64])
 	)
-	actual.Reset()
-
-	s.True(actual.HasNext())
-	s.Equal(float64(1), actual.Next())
-	s.False(actual.HasNext())
+	strategy.On("Samples", ctx, source).Return(ch)
+	sampler.Samples(ctx)
 	strategy.AssertExpectations(s.T())
-}
-
-func (s *SamplerSuite) TestHasNext() {
-	var (
-		strategy = func() (m *strategyMock) {
-			m = new(strategyMock)
-			m.On("Next", mock.AnythingOfType("*sampling.sourceMock")).Once().Return(float64(1), true)
-			m.On("Next", mock.AnythingOfType("*sampling.sourceMock")).Once().Return(float64(-1), false)
-			return
-		}()
-		actual = New[float64](new(sourceMock), func() Strategy[float64] {
-			return strategy
-		})
-	)
-	actual.Reset()
-
-	s.True(actual.HasNext())
-	s.Equal(float64(1), actual.Next())
-	s.False(actual.HasNext())
-	strategy.AssertExpectations(s.T())
-}
-
-func (s *SamplerSuite) TestNext() {
-	var (
-		strategy = func() (m *strategyMock) {
-			m = new(strategyMock)
-			m.On("Next", mock.AnythingOfType("*sampling.sourceMock")).Once().Return(float64(1), true)
-			m.On("Next", mock.AnythingOfType("*sampling.sourceMock")).Once().Return(float64(-1), false)
-			return
-		}()
-		actual = New[float64](new(sourceMock), func() Strategy[float64] {
-			return strategy
-		})
-	)
-	actual.Reset()
-
-	s.True(actual.HasNext())
-	s.Equal(float64(1), actual.Next())
-	s.False(actual.HasNext())
-	strategy.AssertExpectations(s.T())
+	close(ch)
 }
 
 type sourceMock struct {
 	mock.Mock
 }
 
-func (s *sourceMock) Count() int {
-	args := s.Called()
-	return args.Int(0)
+func (s *sourceMock) Count(ctx context.Context) (int, error) {
+	args := s.Called(ctx)
+	return args.Int(0), args.Error(1)
 }
 
-func (s *sourceMock) Select(i int) float64 {
-	args := s.Called(i)
-	return args.Get(0).(float64)
+func (s *sourceMock) Select(ctx context.Context, i int) (float64, error) {
+	args := s.Called(ctx, i)
+	return args.Get(0).(float64), args.Error(1)
 }
 
 type strategyMock struct {
 	mock.Mock
 }
 
-func (s *strategyMock) Next(source Source[float64]) (value float64, found bool) {
-	args := s.Called(source)
-	value = args.Get(0).(float64)
-	found = args.Bool(1)
-	return
+func (s *strategyMock) Samples(ctx context.Context, source Source[float64]) <-chan Sample[float64] {
+	args := s.Called(ctx, source)
+	return args.Get(0).(chan Sample[float64])
 }

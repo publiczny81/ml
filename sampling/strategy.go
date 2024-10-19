@@ -1,32 +1,40 @@
 package sampling
 
-// SystematicalStrategy implements Strategy interface. It generates consecutive integers in range from zero until limit
-type SystematicalStrategy[E any] struct {
-	limit   int
-	current int
-}
+import "context"
 
-// NewSystematicalStrategyWithLimit creates new SystematicalStrategy with given limit
-func NewSystematicalStrategyWithLimit[E any](limit int) *SystematicalStrategy[E] {
-	return &SystematicalStrategy[E]{
-		limit: limit,
-	}
-}
+// SystematicalStrategy implements Strategy interface. It generates consecutive integers in range from zero until limit of source is reached.
+type SystematicalStrategy[E any] struct{}
 
-// NewSystematicalStrategyFromSource creates new SystematicalStrategy from Source
-func NewSystematicalStrategyFromSource[E any](source Source[E]) *SystematicalStrategy[E] {
-	return &SystematicalStrategy[E]{
-		limit: source.Count(),
-	}
-}
-
-func (s *SystematicalStrategy[E]) Next(source Source[E]) (e E, found bool) {
-	if s.current < s.limit {
-		e = source.Select(s.current)
-		found = true
-		s.current++
-	}
-	return
+func (s *SystematicalStrategy[E]) Samples(ctx context.Context, source Source[E]) <-chan Sample[E] {
+	var (
+		ch = make(chan Sample[E])
+	)
+	go func() {
+		defer close(ch)
+		var (
+			current    = 0
+			limit, err = source.Count(ctx)
+			e          E
+		)
+		if err != nil {
+			ch <- Error[E](err)
+			return
+		}
+		for current < limit {
+			if e, err = source.Select(ctx, current); err != nil {
+				ch <- Error[E](err)
+				return
+			}
+			current++
+			select {
+			case <-ctx.Done():
+				ch <- Error[E](ctx.Err())
+				return
+			case ch <- ValueOf(e):
+			}
+		}
+	}()
+	return ch
 }
 
 // Rand defines contract for random number generator
@@ -36,8 +44,7 @@ type Rand interface {
 }
 
 type RandomStrategy[E any] struct {
-	rand     Rand
-	executed bool
+	rand Rand
 }
 
 func NewRandomStrategy[E any](rand Rand) *RandomStrategy[E] {
@@ -46,12 +53,33 @@ func NewRandomStrategy[E any](rand Rand) *RandomStrategy[E] {
 	}
 }
 
-func (s *RandomStrategy[E]) Next(source Source[E]) (e E, found bool) {
-	if !s.executed {
-		e = source.Select(s.rand.IntN(source.Count()))
-		found = true
-		s.executed = true
-		return
-	}
-	return
+func (s *RandomStrategy[E]) Samples(ctx context.Context, source Source[E]) <-chan Sample[E] {
+	var (
+		ch = make(chan Sample[E])
+	)
+	go func() {
+		defer close(ch)
+
+		var (
+			limit, err = source.Count(ctx)
+			e          E
+		)
+		if err != nil {
+			ch <- Error[E](err)
+			return
+		}
+		if e, err = source.Select(ctx, s.rand.IntN(limit)); err != nil {
+			ch <- Error[E](err)
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			ch <- Error[E](ctx.Err())
+			return
+		case ch <- ValueOf(e):
+		}
+
+	}()
+	return ch
 }

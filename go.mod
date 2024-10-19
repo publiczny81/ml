@@ -3,6 +3,7 @@ module github.com/publiczny81/ml
 go 1.22.3
 
 require (
+	github.com/gammazero/deque v0.2.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
 )

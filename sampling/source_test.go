@@ -1,6 +1,8 @@
 package sampling
 
 import (
+	"context"
+	"github.com/publiczny81/ml/errors"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -33,7 +35,9 @@ func (s *SliceSourceSuite) TestCount() {
 
 	for _, test := range tests {
 		s.Run(test.Name, func() {
-			s.Equal(test.Expected, test.Source.Count())
+			count, err := test.Source.Count(context.TODO())
+			s.NoError(err)
+			s.Equal(test.Expected, count)
 		})
 	}
 }
@@ -73,7 +77,52 @@ func (s *SliceSourceSuite) TestSelect() {
 
 	for _, test := range tests {
 		s.Run(test.Name, func() {
-			s.Equal(test.Expected, test.Source.Select(test.Index))
+			var actual, err = test.Source.Select(context.TODO(), test.Index)
+			s.NoError(err)
+			s.Equal(test.Expected, actual)
+		})
+	}
+}
+
+type LimitedSourceSuite struct {
+	suite.Suite
+}
+
+func TestLimitedSource(t *testing.T) {
+	suite.Run(t, new(LimitedSourceSuite))
+}
+
+func (s *LimitedSourceSuite) TestNewLimitedSource() {
+	var (
+		tests = []struct {
+			Name     string
+			Source   *SliceSource[[]float64, float64]
+			From     int
+			To       int
+			Expected *LimitedSource[float64]
+			Error    error
+		}{
+			{
+				Name:     "When source is nil then return error",
+				Source:   nil,
+				From:     0,
+				To:       0,
+				Expected: nil,
+				Error:    errors.WithMessage(errors.InvalidParameterError, "NewLimitedSource: source is nil"),
+			},
+		}
+	)
+
+	for _, test := range tests {
+		s.Run(test.Name, func() {
+			actual, err := NewLimitedSource(test.Source, test.From, test.To)
+			if test.Error != nil {
+				s.Error(err)
+				s.ErrorContains(err, test.Error.Error())
+				return
+			}
+			s.NoError(err)
+			s.Equal(test.Expected, actual)
 		})
 	}
 }

@@ -1,0 +1,8 @@
+@startuml
+start
+:Get source;
+:Create training set;
+:Create validation set;
+:Create test set;
+end
+@enduml

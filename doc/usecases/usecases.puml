@@ -1,0 +1,13 @@
+@startuml
+actor model
+package "ann" {
+    (Create network) as (CN)
+    (Store network) as (SN)
+    (Load network) as (LN)
+    (Train Network) as (TN)
+}
+model --> (CN): uses
+model --> (TN): uses
+(CN) --> (LN):extends
+(TN)-->(SN):includes
+@enduml

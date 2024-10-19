@@ -3,7 +3,7 @@ package array
 import (
 	"github.com/pkg/errors"
 	"github.com/publiczny81/ml/utils"
-	"github.com/publiczny81/ml/utils/slice"
+	"github.com/publiczny81/ml/utils/slices"
 )
 
 type Array[T any] struct {
@@ -19,9 +19,9 @@ func MakeIndexPositionFunc(dim ...int) (index func(...int) int, position func(in
 		length = 1
 	)
 
-	slice.IterateWithIndex(dim, func(idx, d int) bool {
+	slices.IterateWithIndex(dim, func(idx, d int) bool {
 		length *= d
-		shift[idx] = slice.Aggregate(dim[idx+1:], 1, func(i int, i2 int) int {
+		shift[idx] = slices.Aggregate(dim[idx+1:], 1, func(i int, i2 int) int {
 			return i * i2
 		})
 		return true
@@ -66,7 +66,7 @@ func New[T any](dim ...int) (m *Array[T]) {
 
 	m = &Array[T]{
 		dim: dim,
-		data: make([]T, slice.Aggregate(dim, 1, func(i int, i2 int) int {
+		data: make([]T, slices.Aggregate(dim, 1, func(i int, i2 int) int {
 			return i * i2
 		})),
 	}
@@ -85,7 +85,7 @@ func NewBuilder[T any](dim ...int) Builder[T] {
 func (b Builder[T]) WithInitFunc(initFunc InitFunc[T]) Builder[T] {
 	return func() (m *Array[T]) {
 		m = b()
-		slice.IterateWithIndex(m.data, func(i int, t T) bool {
+		slices.IterateWithIndex(m.data, func(i int, t T) bool {
 			m.data[i] = initFunc(i)
 			return true
 		})
@@ -96,7 +96,7 @@ func (b Builder[T]) WithInitFunc(initFunc InitFunc[T]) Builder[T] {
 func (b Builder[T]) WithApplyFunc(f ApplyFunc[T]) Builder[T] {
 	return func() (m *Array[T]) {
 		m = b()
-		slice.ApplyWithIndex(m.data, f)
+		slices.ApplyWithIndex(m.data, f)
 		return
 	}
 }
@@ -141,9 +141,9 @@ func (a *Array[T]) Set(value T, index ...int) {
 }
 
 func (a *Array[T]) Iterate(f func(v T) bool) {
-	slice.Iterate(a.data, f)
+	slices.Iterate(a.data, f)
 }
 
 func (a *Array[T]) IterateWithIndex(f func(idx int, v T) bool) {
-	slice.IterateWithIndex(a.data, f)
+	slices.IterateWithIndex(a.data, f)
 }

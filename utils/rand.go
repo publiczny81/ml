@@ -1,17 +1,13 @@
 package utils
 
-type RandSource struct{}
+import (
+	"math/rand/v2"
+)
 
-func (s RandSource) Uint64() uint64 {
-	return uint64(Now().UnixNano())
-}
+var Rand = new(randomizer)
 
-func NewRandSource() RandSource {
-	return RandSource{}
-}
+type randomizer struct{}
 
-func Randomize[S ~[]E, E any](s S, generator func() E) {
-	for i := range s {
-		s[i] = generator()
-	}
+func (r *randomizer) Float64() float64 {
+	return rand.Float64()*2 - 1
 }

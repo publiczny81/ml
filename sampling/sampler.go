@@ -1,52 +1,53 @@
 package sampling
 
+import (
+	"context"
+)
+
 // Source defines contract for samples provider
 type Source[E any] interface {
-	Count() int
-	Select(int) E
+	Count(context.Context) (int, error)
+	Select(context.Context, int) (E, error)
+}
+
+type Sample[E any] struct {
+	Value E
+	Error error
+}
+
+func ValueOf[E any](e E) Sample[E] {
+	return Sample[E]{
+		Value: e,
+	}
+}
+
+func Error[E any](e error) Sample[E] {
+	return Sample[E]{
+		Error: e,
+	}
 }
 
 // Strategy defines contract for selection samples from Source
 type Strategy[E any] interface {
-	// Next returns sample from Source and true if successful. Otherwise, it returns false
-	Next(Source[E]) (E, bool)
+	// Samples returns channel with samples from Source
+	Samples(context.Context, Source[E]) <-chan Sample[E]
 }
-
-// StrategyFactory creates new Strategy
-type StrategyFactory[E any] func() Strategy[E]
 
 // Sampler iterates over samples from the Source according to given Strategy
 type Sampler[E any] struct {
-	hasNext     bool
-	next        E
-	source      Source[E]
-	newStrategy StrategyFactory[E]
-	strategy    Strategy[E]
+	source   Source[E]
+	strategy Strategy[E]
 }
 
-// New creates new sampler with source and given StrategyFactory
-func New[E any](source Source[E], factory StrategyFactory[E]) (s *Sampler[E]) {
+// New creates new sampler with source and sampling strategy
+func New[E any](source Source[E], strategy Strategy[E]) (s *Sampler[E]) {
 	s = &Sampler[E]{
-		source:      source,
-		newStrategy: factory,
+		source:   source,
+		strategy: strategy,
 	}
 	return
 }
 
-// Next returns next sample
-func (s *Sampler[E]) Next() (next E) {
-	next = s.next
-	s.next, s.hasNext = s.strategy.Next(s.source)
-	return
-}
-
-// HasNext returns true as long as there are available more samples
-func (s *Sampler[E]) HasNext() bool {
-	return s.hasNext
-}
-
-// Reset resets Sampler allowing for new iteration over samples
-func (s *Sampler[E]) Reset() {
-	s.strategy = s.newStrategy()
-	s.next, s.hasNext = s.strategy.Next(s.source)
+func (s *Sampler[E]) Samples(ctx context.Context) <-chan Sample[E] {
+	return s.strategy.Samples(ctx, s.source)
 }

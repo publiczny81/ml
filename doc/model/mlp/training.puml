@@ -1,0 +1,22 @@
+@startuml
+start
+:Configure trainer;
+if (Next epoch) then (yes)
+    :Update learning rate;
+    :Shuffle samples;
+    :Split samples;
+    if (Next batch) then (yes)
+        if (Next sample) then (yes)
+            :Forward;
+            :Compute error;
+
+        endif
+        if (Error is small) then (yes)
+            stop
+        endif
+        :Backward;
+        :Nudge weights;
+    endif
+endif
+end
+@enduml

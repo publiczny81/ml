@@ -1,0 +1,8 @@
+@startuml
+object network
+object neurons
+object weights
+
+network *-- neurons: has
+network o-- weights: has
+@enduml

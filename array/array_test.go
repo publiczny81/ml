@@ -1,7 +1,7 @@
 package array
 
 import (
-	"github.com/publiczny81/ml/utils/slice"
+	"github.com/publiczny81/ml/utils/slices"
 	"github.com/stretchr/testify/suite"
 	"reflect"
 	"testing"
@@ -255,7 +255,7 @@ func (s *ArraySuite) TestIndexPosition() {
 	for _, test := range tests {
 		s.Run(test.Name, func() {
 			var index, position = MakeIndexPositionFunc(test.Dim...)
-			slice.Iterate(test.SubTests, func(test subTest) bool {
+			slices.Iterate(test.SubTests, func(test subTest) bool {
 				s.Run(test.Name, func() {
 					if test.IndexError != nil {
 						s.PanicsWithError(test.IndexError.Error(), func() {
