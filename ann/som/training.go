@@ -2,11 +2,17 @@ package som
 
 import (
 	"context"
+	"github.com/publiczny81/ml/ann/initializers"
 	"github.com/publiczny81/ml/calculus/vector"
 	"github.com/publiczny81/ml/calculus/vector/operations"
 	"github.com/publiczny81/ml/sampling"
+	"github.com/publiczny81/ml/utils"
 	"runtime"
 	"sync"
+)
+
+var (
+	defaultInitializer = initializers.NewNormal(utils.Rand)
 )
 
 type sampler interface {
@@ -21,31 +27,63 @@ type neighborhood interface {
 	NeighborRate([]float64, []float64, int) float64
 }
 
+type initializer interface {
+	Initialize(s []float64)
+}
+
 type Trainer struct {
+	initializer
 	sampler
 	learningRateSchedule
 	neighborhood
 }
 
-func NewTrainer(sampler sampler, schedule learningRateSchedule, neighborhood neighborhood) *Trainer {
-	return &Trainer{
+type TrainerOption func(*Trainer)
+
+func WithInitializer(i initializer) TrainerOption {
+	return func(t *Trainer) {
+		t.initializer = i
+	}
+}
+
+func NewTrainer(sampler sampler, schedule learningRateSchedule, neighborhood neighborhood, opts ...TrainerOption) (t *Trainer) {
+	t = &Trainer{
+		initializer:          defaultInitializer,
 		sampler:              sampler,
 		learningRateSchedule: schedule,
 		neighborhood:         neighborhood,
 	}
-}
-
-func (t *Trainer) Train(ctx context.Context, network *Network, epochs int) (err error) {
-	for epoch := range epochs {
-		if err = t.train(ctx, network, epoch); err != nil {
-			return
-		}
+	for _, opt := range opts {
+		opt(t)
 	}
 	return
 }
 
-func (t *Trainer) train(ctx context.Context, network *Network, epoch int) (err error) {
-	for sample := range t.sampler.Samples(ctx) {
+func (t *Trainer) Train(ctx context.Context, network *Network, epochs int) (err error) {
+	t.Initialize(network.Weights)
+
+	return t.train(ctx, network, epochs, 1)
+}
+
+func (t *Trainer) train(ctx context.Context, network *Network, epochs, epoch int) (err error) {
+	if epochs < epoch {
+		return
+	}
+	if err = t.trainSample(ctx, network, epochs, epoch, t.sampler.Samples(ctx)); err != nil {
+		return
+	}
+	return t.train(ctx, network, epochs, epoch+1)
+}
+
+func (t *Trainer) trainSample(ctx context.Context, network *Network, epochs, epoch int, samples <-chan sampling.Sample[[]float64]) (err error) {
+	select {
+	case <-ctx.Done():
+		err = ctx.Err()
+		return
+	case sample, ok := <-samples:
+		if !ok {
+			return
+		}
 		if sample.Error != nil {
 			err = sample.Error
 			return
@@ -56,8 +94,8 @@ func (t *Trainer) train(ctx context.Context, network *Network, epoch int) (err e
 		if err = t.update(ctx, network, epoch, sample.Value, bmu); err != nil {
 			return
 		}
+		return t.trainSample(ctx, network, epochs, epoch, samples)
 	}
-	return
 }
 
 func (t *Trainer) update(ctx context.Context, network *Network, epoch int, features []float64, bmu Point) (err error) {

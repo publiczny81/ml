@@ -17,15 +17,27 @@ func Rectifier(value float64) float64 {
 
 func ParametricRectifier(a float64) func(float64) float64 {
 	return func(value float64) float64 {
-		return math.Max(a*value, value)
+		return math.Max(0, value) + a*math.Min(0, value)
 	}
 }
 
 func DerivativeParametricRectifier(a float64) func(float64) float64 {
 	return func(value float64) float64 {
-		if value > 0 {
+		if value >= 0 {
 			return 1
 		}
+		return a
+	}
+}
+
+func Linear(a, b float64) func(float64) float64 {
+	return func(x float64) float64 {
+		return a*x + b
+	}
+}
+
+func DerivativeLinear(a float64) func(float64) float64 {
+	return func(x float64) float64 {
 		return a
 	}
 }

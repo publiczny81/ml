@@ -1,9 +1,8 @@
-package codecs
+package som
 
 import (
 	"encoding/json"
 	"github.com/publiczny81/ml/ann/som"
-	"github.com/publiczny81/ml/ann/som/model"
 	"github.com/publiczny81/ml/errors"
 	"io"
 )
@@ -34,7 +33,7 @@ func (enc *Encoder) encode(network *som.Network) error {
 	if network == nil {
 		return errors.WithMessage(errors.InvalidParameterValueError, "network is nil")
 	}
-	var net = &model.Network{
+	var net = &Network{
 		Features: network.Features,
 		Metrics:  network.Metrics,
 		Shape:    network.Shape,
@@ -70,7 +69,7 @@ func (dec *Decoder) decode(network *som.Network) (err error) {
 		err = errors.WithMessage(errors.InvalidParameterValueError, "network is nil")
 		return
 	}
-	var net = new(model.Network)
+	var net = new(Network)
 	if err = json.NewDecoder(dec.reader).Decode(net); err != nil {
 		return
 	}
@@ -88,7 +87,7 @@ func Decode(buffer []byte, network *som.Network) (err error) {
 		err = errors.WithMessage(errors.InvalidParameterValueError, "network is nil")
 		return
 	}
-	var net = new(model.Network)
+	var net = new(Network)
 	if err = json.Unmarshal(buffer, net); err != nil {
 		return
 	}

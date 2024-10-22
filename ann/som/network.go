@@ -4,9 +4,10 @@ import (
 	"github.com/publiczny81/ml/ann/neuron"
 	"github.com/publiczny81/ml/errors"
 	"github.com/publiczny81/ml/metrics"
-	"github.com/publiczny81/ml/utils"
 	"github.com/publiczny81/ml/utils/slices"
 	"math"
+	"runtime"
+	"sync"
 )
 
 type Metrics struct {
@@ -18,7 +19,6 @@ var (
 	defaultNetworkConfig = config{
 		Metrics:  metrics.Euclidean,
 		Topology: TopologyLinear,
-		Rand:     utils.Rand,
 	}
 )
 
@@ -48,15 +48,13 @@ type config struct {
 	// Features is input vector size
 	Features int
 	// Metrics which are used for calculation of distance between input vector and weights of the neuron
-	Metrics  string
-	// Rand is a number generator used for initialization of neuron's w
-	Rand     Rand
+	Metrics string
 	// Shape represents a shape of the network
-	Shape    []int
+	Shape []int
 	// Topology represents topology of the network
-	Topology int
+	Topology string
 	// Weights contains the weights of the neurons
-	Weights  []float64
+	Weights []float64
 }
 
 type Option func(options *config) error
@@ -89,23 +87,15 @@ func WithMetrics(metricName string) Option {
 	}
 }
 
-func WithTopology(topology int) Option {
-	return func(options *config) error {
-		if topology < TopologyLinear || topology > TopologyHexagonal {
-			return errors.WithMessagef(errors.InvalidParameterValueError, "topology=%d", topology)
+func WithTopology(topology string) Option {
+	return func(options *config) (err error) {
+		switch topology {
+		case TopologyLinear, TopologyRectangular, TopologyHexagonal:
+			options.Topology = topology
+		default:
+			err = errors.WithMessagef(errors.InvalidParameterValueError, "topology=%s", topology)
 		}
-		options.Topology = topology
-		return nil
-	}
-}
-
-func WithRand(rand Rand) Option {
-	return func(options *config) error {
-		if rand == nil {
-			return errors.WithMessage(errors.InvalidParameterValueError, "rand=nil")
-		}
-		options.Rand = rand
-		return nil
+		return
 	}
 }
 
@@ -173,10 +163,6 @@ func validateConfig(config *config) (err error) {
 		return
 	}
 
-	if config.Rand == nil {
-		config.Rand = defaultNetworkConfig.Rand
-	}
-
 	return nil
 }
 
@@ -191,7 +177,7 @@ func (net *Network) Init(opts ...Option) (err error) {
 		return
 	}
 
-	net.initWeights()
+	net.resizeWeights()
 
 	metric, _ := metrics.Get(net.config.Metrics)
 
@@ -209,33 +195,57 @@ func (net *Network) Init(opts ...Option) (err error) {
 	return nil
 }
 
-func (net *Network) randomize() {
-	for i := range net.Weights {
-		net.Weights[i] = net.Rand.Float64()
-	}
-}
-
-func (net *Network) initWeights() {
+func (net *Network) resizeWeights() {
 	if len(net.Weights) == 0 {
 		count := slices.Aggregate(net.config.Shape, net.config.Features, func(acc int, factor int) int {
 			acc *= factor
 			return acc
 		})
 		net.Weights = make([]float64, count)
-		net.randomize()
 	}
 }
 
 func (net *Network) BestMatchingUnit(input []float64) (bmu Point) {
+	type item struct {
+		Point
+		Distance float64
+	}
+
 	var (
+		threads     = min(runtime.NumCPU()*2-1, len(net.Neurons))
+		tasks       = make(chan *Neuron, threads)
+		results     = make(chan *item, threads)
 		minDistance = math.MaxFloat64
+		wg          sync.WaitGroup
 	)
 
-	for i := range net.Neurons {
-		var distance = net.Neurons[i].Activate(input)
-		if distance < minDistance {
-			minDistance = distance
-			bmu = net.Neurons[i].Point
+	for range threads {
+		wg.Add(1)
+		go func() {
+			for task := range tasks {
+				results <- &item{
+					Point:    task.Point,
+					Distance: task.Activate(input),
+				}
+			}
+			wg.Done()
+		}()
+	}
+
+	go func() {
+		for _, n := range net.Neurons {
+
+			tasks <- n
+		}
+		close(tasks)
+		wg.Wait()
+		close(results)
+	}()
+
+	for result := range results {
+		if result.Distance < minDistance {
+			minDistance = result.Distance
+			bmu = result.Point
 		}
 	}
 

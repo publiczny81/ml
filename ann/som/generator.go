@@ -1,9 +1,9 @@
 package som
 
 const (
-	TopologyLinear      = iota // 1-dimensional space with linear topology
-	TopologyRectangular        // 2-dimensional space with rectangular topology
-	TopologyHexagonal          // 2-dimensional space with hexagonal topology
+	TopologyLinear      = "linear"      // 1-dimensional space with linear topology
+	TopologyRectangular = "rectangular" // 2-dimensional space with rectangular topology
+	TopologyHexagonal   = "hexagonal"   // 2-dimensional space with hexagonal topology
 )
 
 const (
@@ -107,7 +107,7 @@ func NewHexagonalGenerator(shape ...int) Generator {
 
 }
 
-func NewGenerator(topology int, shape ...int) Generator {
+func NewGenerator(topology string, shape ...int) Generator {
 	switch topology {
 	case TopologyLinear:
 		return NewLinearGenerator(shape[0])

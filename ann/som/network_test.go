@@ -3,7 +3,6 @@ package som
 import (
 	"github.com/publiczny81/ml/errors"
 	"github.com/publiczny81/ml/metrics"
-	"github.com/publiczny81/ml/utils"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -28,14 +27,7 @@ func (s *NetworkSuite) TestNew() {
 			{
 				Name: "When passed invalid topology then return error",
 				Factory: func() (*Network, error) {
-					return New(4, []int{2, 2, 2}, WithTopology(3))
-				},
-				ExpectedError: errors.InvalidParameterValueError,
-			},
-			{
-				Name: "When passed invalid rand then return error",
-				Factory: func() (*Network, error) {
-					return New(4, []int{2, 2}, WithRand(nil))
+					return New(4, []int{2, 2, 2}, WithTopology("invalid"))
 				},
 				ExpectedError: errors.InvalidParameterValueError,
 			},
@@ -64,7 +56,6 @@ func (s *NetworkSuite) TestNew() {
 						Shape:    []int{2, 2},
 						Topology: TopologyHexagonal,
 						Metrics:  metrics.Euclidean,
-						Rand:     utils.Rand,
 					},
 				},
 			},
@@ -110,13 +101,11 @@ func (s *NetworkSuite) TestInit() {
 				ExpectedError: errors.InvalidParameterValueError,
 			},
 			{
-				Name: "When weights are not provided then initiate with random weights",
+				Name: "When weights are not provided then initiate with zeros vector",
 				Factory: func() (*Network, error) {
-					var m = new(randMock)
-					m.On("Float64").Return(0.5)
-					return New(1, []int{6}, WithRand(m))
+					return New(1, []int{6})
 				},
-				Expected: []float64{0.5, 0.5, 0.5, 0.5, 0.5, 0.5},
+				Expected: []float64{0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
 			},
 			{
 				Name: "When weights are provided then return no error",

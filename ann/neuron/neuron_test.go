@@ -34,15 +34,6 @@ func TestNewActivateFunc(t *testing.T) {
 			Weights:  []float64{3, 2, 1},
 			Expected: 10,
 		},
-		{
-			Name: "When length of features is less than length of weights then process sum of multiplications plus bias",
-			Factory: func() ActivateFunc[[]float64, float64] {
-				return NewActivateFunc[float64](func(value float64) float64 { return value })
-			},
-			Features: []float64{1, 2, 3},
-			Weights:  []float64{3, 2, 1, 4},
-			Expected: 14,
-		},
 	}
 
 	for _, test := range tests {

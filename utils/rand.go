@@ -9,5 +9,9 @@ var Rand = new(randomizer)
 type randomizer struct{}
 
 func (r *randomizer) Float64() float64 {
-	return rand.Float64()*2 - 1
+	return rand.Float64()
+}
+
+func (r *randomizer) NormFloat64() float64 {
+	return rand.NormFloat64()
 }

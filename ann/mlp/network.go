@@ -1,198 +1,214 @@
 package mlp
 
-//
-//import (
-//	"github.com/pkg/errors"
-//	"github.com/publiczny81/ml/ann/neuron"
-//	"github.com/publiczny81/ml/calculus/types"
-//	errors2 "github.com/publiczny81/ml/errors"
-//	"github.com/publiczny81/ml/utils/slices"
-//)
-//
-//type NetworkOptions[T types.Float] struct {
-//	Layers     []int
-//	Weights    []T
-//	Activation neuron.ActivateFunc[T]
-//	Rand       neuron.Rand[T]
-//}
-//
-//type NetworkOption[T types.Float] func(options *NetworkOptions[T]) error
-//
-//func WithRand[T types.Float](rand neuron.Rand[T]) NetworkOption[T] {
-//	return func(options *NetworkOptions[T]) error {
-//		options.Rand = rand
-//		return nil
-//	}
-//}
-//
-//func WithWeights[T types.Float](weights []T) NetworkOption[T] {
-//	return func(options *NetworkOptions[T]) error {
-//		options.Weights = weights
-//		return nil
-//	}
-//}
-//
-//func WithActivateFunc[T types.Float](activation neuron.ActivateFunc[T]) NetworkOption[T] {
-//	return func(options *NetworkOptions[T]) error {
-//		options.Activation = activation
-//		return nil
-//	}
-//}
-//
-//type Layer[T types.Float] []*neuron.Neuron[T]
-//
-//type Network[T types.Float] struct {
-//	Weights []T
-//	Neurons []Layer[T]
-//	//Result  [][]T
-//}
-//
-//func New[T types.Float](layers []int, opts ...NetworkOption[T]) (net *Network[T], err error) {
-//	var options = NetworkOptions[T]{
-//		Layers: layers,
-//	}
-//
-//	for _, o := range opts {
-//		if err = o(&options); err != nil {
-//			return
-//		}
-//	}
-//
-//	if err = options.ValidateAndInitNetworkOptions(); err != nil {
-//		return
-//	}
-//
-//	net = &Network[T]{
-//		Weights: options.Weights,
-//		Neurons: make([]Layer[T], len(options.Layers)-1),
-//		//Result:  make([][]T, len(options.Layers)),
-//	}
-//	var (
-//		start = 0
-//	)
-//	//slice.ApplyWithIndex(net.Result, func(i int, t []T) []T {
-//	//	return make([]T, options.Layers[i])
-//	//})
-//
-//	slices.ApplyWithIndex(net.Neurons, func(i int, layer Layer[T]) Layer[T] {
-//		var delta = options.Layers[i] + 1
-//		layer = make(Layer[T], options.Layers[i+1])
-//		slices.Apply(layer, func(n *neuron.Neuron[T]) *neuron.Neuron[T] {
-//			var end = start + delta
-//			n = neuron.New(options.Activation, options.Weights[start:end])
-//			start = end
-//			return n
-//		})
-//		return layer
-//	})
-//	return
-//}
-//
-//func (net *Network[T]) MakeResult(features int) (result [][]T) {
-//	result = make([][]T, len(net.Neurons)+1)
-//	result[0] = make([]T, features)
-//	slices.ApplyWithIndex(result[1:], func(i int, ts []T) []T {
-//		return make([]T, len(net.Neurons[i]))
-//	})
-//	return
-//}
-//
-//func (net *Network[T]) Process(input []T) []T {
-//	var result = net.MakeResult(len(input))
-//	net.processWithResult(input, result)
-//
-//	return result[len(net.Neurons)]
-//}
-//
-//type Result[T types.Float] [][]T
-//
-//func (r Result[T]) Adjust(layer, required int) Result[T] {
-//	if layer > len(r) {
-//
-//	}
-//	if len(r[layer]) == required {
-//		return r
-//	}
-//	if len(r[layer]) > required {
-//		r[layer] = r[layer][:required]
-//		return r
-//	}
-//	if cap(r[layer]) >= required {
-//		r[layer] = r[layer][:required]
-//		return r
-//	}
-//	r[layer] = make([]T, required)
-//	return r
-//}
-//
-//func (net *Network[T]) validate(input []T, result [][]T) (err error) {
-//	if len(result) != len(net.Neurons)+1 {
-//		err = errors.Wrap(errors2.InvalidParameterError, "size of result")
-//		return
-//	}
-//	if len(input) != len(result[0]) {
-//		err = errors.Wrapf(errors2.InvalidParameterError, "incompatible input and result")
-//		return
-//	}
-//	slices.IterateWithIndex(net.Neurons, func(i int, l Layer[T]) bool {
-//		if len(l) != len(result[i+1]) {
-//			err = errors.Wrap(errors2.InvalidParameterError, "size of result")
-//			return false
-//		}
-//		return true
-//	})
-//	return
-//}
-//
-//func (net *Network[T]) ProcessWithResult(input []T, result [][]T) {
-//	if err := net.validate(input, result); err != nil {
-//		panic(err)
-//	}
-//	net.processWithResult(input, result)
-//}
-//
-//func (net *Network[T]) processWithResult(input []T, result [][]T) {
-//	copy(result[0], input)
-//	slices.IterateWithIndex(net.Neurons, func(i int, layer Layer[T]) bool {
-//		slices.IterateWithIndex(layer, func(j int, n *neuron.Neuron[T]) bool {
-//			result[i+1][j] = n.Activate(result[i])
-//			return true
-//		})
-//		return true
-//	})
-//}
-//
-//func (options *NetworkOptions[T]) ValidateAndInitNetworkOptions() (err error) {
-//	if len(options.Layers) < 1 {
-//		err = errors.WithMessage(errors2.InvalidParameterError, "layers")
-//		return
-//	}
-//	var (
-//		countWeights int
-//	)
-//
-//	slices.IterateWithIndex(options.Layers[1:], func(i int, i2 int) bool {
-//		countWeights += (options.Layers[i] + 1) * i2
-//		return true
-//	})
-//
-//	if len(options.Weights) > 0 && len(options.Weights) != countWeights {
-//		err = errors.WithMessage(errors2.InvalidParameterError, "incompatible parameters layers and weights")
-//		return
-//	}
-//	if len(options.Weights) == 0 && options.Rand == nil {
-//		err = errors.WithMessage(errors2.InvalidParameterError, "missing parameter rand or weights")
-//		return
-//	}
-//	if len(options.Weights) == 0 {
-//		options.Weights = make([]T, countWeights)
-//		slices.Apply(options.Weights, func(_ T) T {
-//			return options.Rand.Float()
-//		})
-//	}
-//	if options.Activation == nil {
-//		err = errors.WithMessage(errors2.InvalidParameterError, "missing parameter activation")
-//		return
-//	}
-//	return
-//}
+import (
+	"context"
+	"github.com/publiczny81/ml/activate"
+	"github.com/publiczny81/ml/calculus/vector"
+	"github.com/publiczny81/ml/errors"
+	"runtime"
+	"sync"
+)
+
+type Rand interface {
+	Float64() float64
+}
+
+type LayerSpec struct {
+	Activation string
+	Neurons    int
+}
+
+type Options struct {
+	Input   int
+	Layers  []LayerSpec
+	Weights []float64
+}
+
+func (o *Options) CountWeights() (count int) {
+	var previous = o.Input + 1
+	for i := 0; i < len(o.Layers); i++ {
+		count += previous * o.Layers[i].Neurons
+		previous = o.Layers[i].Neurons + 1
+	}
+	return
+}
+
+type Option func(options *Options) error
+
+func AddLayer(neurons int, activation string) Option {
+	return func(options *Options) error {
+		options.Layers = append(options.Layers, LayerSpec{
+			Activation: activation,
+			Neurons:    neurons,
+		})
+		return nil
+	}
+}
+
+func WithWeights(weights []float64) Option {
+	return func(options *Options) error {
+		options.Weights = weights
+		return nil
+	}
+}
+
+type layer struct {
+	Activation activate.Activate
+	Input      []float64
+	Output     []float64
+	Weights    []float64
+}
+
+func (l *layer) getThreads() int {
+	return min(runtime.NumCPU()*2-1, len(l.Weights)/len(l.Input))
+}
+
+func (l *layer) Activate(ctx context.Context) (err error) {
+	type Neuron struct {
+		Start int
+		End   int
+		Index int
+	}
+	var (
+		threads = l.getThreads()
+		wg      sync.WaitGroup
+		ch      = make(chan *Neuron, threads)
+	)
+	for range threads {
+		wg.Add(1)
+		go func() {
+			for n := range ch {
+				l.Output[n.Index] = l.Activation.Function(vector.DotProduct(l.Input, l.Weights[n.Start:n.End]))
+			}
+			wg.Done()
+		}()
+	}
+
+	go func() {
+		defer close(ch)
+		var (
+			start = 0
+			end   = len(l.Input)
+		)
+		for idx := range len(l.Output) {
+			select {
+			case <-ctx.Done():
+				err = ctx.Err()
+				return
+			case ch <- &Neuron{
+				Start: start,
+				End:   end,
+				Index: idx,
+			}:
+			}
+		}
+	}()
+	wg.Wait()
+	return
+}
+
+type Network struct {
+	Options
+	Layers []layer
+}
+
+func New(input int, opts ...Option) (net *Network, err error) {
+	var options Options
+
+	options.Input = input
+
+	for _, o := range opts {
+		if err = o(&options); err != nil {
+			return
+		}
+	}
+
+	net = &Network{
+		Options: options,
+	}
+	return
+}
+
+func (net *Network) Init(opts ...Option) (err error) {
+	for _, o := range opts {
+		if err = o(&net.Options); err != nil {
+			return
+		}
+	}
+	if err = net.validate(); err != nil {
+		return
+	}
+
+	return net.init()
+
+}
+
+func (net *Network) Activate(ctx context.Context, input []float64) (output []float64, err error) {
+	if len(input) != net.Options.Input {
+		err = errors.WithMessagef(errors.InvalidParameterValueError, "len(input)=%d)", len(input))
+		return
+	}
+	copy(net.Layers[0].Input, input)
+	for _, l := range net.Layers {
+		if err = l.Activate(ctx); err != nil {
+			return
+		}
+	}
+	copy(output, net.Layers[len(net.Layers)-1].Output)
+	return
+}
+
+func (net *Network) validate() (err error) {
+	var options = &net.Options
+	if options.Input < 1 {
+		return errors.WithMessagef(errors.InvalidParameterValueError, "network.Input=%d", options.Input)
+	}
+
+	if len(options.Layers) < 1 {
+		return errors.WithMessage(errors.InvalidParameterValueError, "network.Layers={}")
+	}
+
+	if len(options.Weights) == 0 {
+		net.Weights = make([]float64, net.CountWeights())
+		return
+	}
+
+	if len(options.Weights) != options.CountWeights() {
+		return errors.WithMessagef(errors.InvalidParameterValueError, "incompatible parameters values len(network.Weights)=%d and network.Layers=%v", len(options.Weights), options.Layers)
+	}
+
+	return
+}
+
+func (net *Network) init() (err error) {
+	var options = &net.Options
+	var (
+		previous   = options.Input + 1
+		start      = 0
+		end        = 0
+		input      = make([]float64, options.Input, options.Input+1)
+		output     []float64
+		activation activate.Activate
+		found      bool
+	)
+
+	for i := 0; i < len(options.Layers); i++ {
+		input = append(input, 1.0)
+		output = make([]float64, options.Layers[i].Neurons, options.Layers[i].Neurons+1)
+		end += previous * options.Layers[i].Neurons
+		previous = options.Layers[i].Neurons + 1
+		if activation, found = activate.Get(options.Layers[i].Activation); !found {
+			return errors.WithMessagef(errors.InvalidParameterValueError, "network.Layer[%d].Activation=")
+		}
+
+		net.Layers = append(net.Layers, layer{
+			Activation: activation,
+			Input:      input,
+			Output:     output,
+			Weights:    options.Weights[start:end],
+		})
+		start = end
+		input = output
+	}
+	return
+}

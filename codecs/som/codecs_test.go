@@ -1,10 +1,9 @@
-package codecs
+package som
 
 import (
 	"bytes"
 	"encoding/json"
 	"github.com/publiczny81/ml/ann/som"
-	"github.com/publiczny81/ml/ann/som/model"
 	"github.com/publiczny81/ml/errors"
 	"github.com/publiczny81/ml/metrics"
 	"github.com/stretchr/testify/assert"
@@ -13,20 +12,6 @@ import (
 )
 
 func TestEncoder(t *testing.T) {
-	//var (
-	//	input         = []float64{1, 2, 3, 4}
-	//	buf           = bytes.NewBuffer(nil)
-	//	enc           = NewEncoder(buf)
-	//	expected, err = som.New(4, []int{10, 10}, som.WithTopology(som.TopologyHexagonal))
-	//	actual        = new(som.Network)
-	//)
-	//assert.NoError(t, err)
-	//assert.NoError(t, expected.Init())
-	//assert.NoError(t, enc.Encode(expected))
-	//assert.NoError(t, Decode(buf.Bytes(), actual))
-	//assert.NoError(t, actual.Init())
-	//assert.Equal(t, expected.BestMatchingUnit(input), actual.BestMatchingUnit(input))
-
 	var tests = []struct {
 		Name     string
 		Input    any
@@ -52,7 +37,7 @@ func TestEncoder(t *testing.T) {
 			}(),
 			Expected: func() []byte {
 				var buffer = new(bytes.Buffer)
-				_ = json.NewEncoder(buffer).Encode(&model.Network{
+				_ = json.NewEncoder(buffer).Encode(&Network{
 					Features: 1,
 					Metrics:  metrics.Euclidean,
 					Shape:    []int{2},
@@ -70,7 +55,7 @@ func TestEncoder(t *testing.T) {
 			}(),
 			Expected: func() []byte {
 				var buffer = new(bytes.Buffer)
-				_ = json.NewEncoder(buffer).Encode(&model.Network{
+				_ = json.NewEncoder(buffer).Encode(&Network{
 					Features: 1,
 					Metrics:  metrics.Euclidean,
 					Shape:    []int{2},

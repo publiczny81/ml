@@ -6,6 +6,7 @@ import (
 	"github.com/publiczny81/ml/calculus/utils"
 	"github.com/publiczny81/ml/learning"
 	"github.com/publiczny81/ml/sampling"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -19,6 +20,15 @@ func TestTrainer(t *testing.T) {
 }
 
 func (s *TrainerSuite) TestTrain() {
+	var initializerMock = new(mockInitializer)
+	initializerMock.On("Initialize", mock.AnythingOfType("[]float64")).Run(func(args mock.Arguments) {
+		values := []float64{0.3, 0.5, 0.7, 0.2, 0.6, 0.7, 0.4, 0.3}
+		slice := args.Get(0).([]float64)
+
+		for i := range slice {
+			slice[i] = values[i]
+		}
+	})
 	var (
 		source = sampling.NewSliceSource([][]float64{
 			{1, 0, 1, 0},
@@ -33,9 +43,9 @@ func (s *TrainerSuite) TestTrain() {
 		network *Network
 
 		expects = []float64{0.89, 0.08, 0.35, 0.03, 0.34, 0.95, 0.9, 0.29}
-		trainer = NewTrainer(sampler, lr, neighbor.Identity())
+		trainer = NewTrainer(sampler, lr, neighbor.Identity(), WithInitializer(initializerMock))
 	)
-	network, err = New(4, []int{2}, WithWeights([]float64{0.3, 0.5, 0.7, 0.2, 0.6, 0.7, 0.4, 0.3}))
+	network, err = New(4, []int{2})
 	s.NoError(err)
 
 	err = network.Init()
@@ -53,4 +63,12 @@ func (s *TrainerSuite) TestTrain() {
 		}
 		return true
 	})
+}
+
+type mockInitializer struct {
+	mock.Mock
+}
+
+func (m *mockInitializer) Initialize(s []float64) {
+	_ = m.Called(s)
 }
